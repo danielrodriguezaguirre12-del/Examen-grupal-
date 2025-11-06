@@ -1,0 +1,429 @@
+#!/usr/bin/env python3
+"""
+AES-128 Encryption and Decryption Implementation
+Implementación completa del algoritmo AES-128 con encriptación y desencriptación
+"""
+
+# ============================================================================
+# SBOX y INVERSE SBOX (Substitution Boxes)
+# ============================================================================
+
+SBOX = [
+    0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
+    0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
+    0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
+    0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
+    0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,
+    0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
+    0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,
+    0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,
+    0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
+    0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,
+    0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,
+    0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
+    0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
+    0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
+    0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
+    0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
+]
+
+INVERSE_SBOX = [
+    0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e, 0x81, 0xf3, 0xd7, 0xfb,
+    0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87, 0x34, 0x8e, 0x43, 0x44, 0xc4, 0xde, 0xe9, 0xcb,
+    0x54, 0x7b, 0x94, 0x32, 0xa6, 0xc2, 0x23, 0x3d, 0xee, 0x4c, 0x95, 0x0b, 0x42, 0xfa, 0xc3, 0x4e,
+    0x08, 0x2e, 0xa1, 0x66, 0x28, 0xd9, 0x24, 0xb2, 0x76, 0x5b, 0xa2, 0x49, 0x6d, 0x8b, 0xd1, 0x25,
+    0x72, 0xf8, 0xf6, 0x64, 0x86, 0x68, 0x98, 0x16, 0xd4, 0xa4, 0x5c, 0xcc, 0x5d, 0x65, 0xb6, 0x92,
+    0x6c, 0x70, 0x48, 0x50, 0xfd, 0xed, 0xb9, 0xda, 0x5e, 0x15, 0x46, 0x57, 0xa7, 0x8d, 0x9d, 0x84,
+    0x90, 0xd8, 0xab, 0x00, 0x8c, 0xbc, 0xd3, 0x0a, 0xf7, 0xe4, 0x58, 0x05, 0xb8, 0xb3, 0x45, 0x06,
+    0xd0, 0x2c, 0x1e, 0x8f, 0xca, 0x3f, 0x0f, 0x02, 0xc1, 0xaf, 0xbd, 0x03, 0x01, 0x13, 0x8a, 0x6b,
+    0x3a, 0x91, 0x11, 0x41, 0x4f, 0x67, 0xdc, 0xea, 0x97, 0xf2, 0xcf, 0xce, 0xf0, 0xb4, 0xe6, 0x73,
+    0x96, 0xac, 0x74, 0x22, 0xe7, 0xad, 0x35, 0x85, 0xe2, 0xf9, 0x37, 0xe8, 0x1c, 0x75, 0xdf, 0x6e,
+    0x47, 0xf1, 0x1a, 0x71, 0x1d, 0x29, 0xc5, 0x89, 0x6f, 0xb7, 0x62, 0x0a, 0xaa, 0x18, 0xbe, 0x1b,
+    0xfc, 0x56, 0x3e, 0x7b, 0xc6, 0x97, 0xf1, 0xcb, 0x13, 0x88, 0xf0, 0x2e, 0x0c, 0xd3, 0x4f, 0xae,
+    0x2d, 0xb4, 0x36, 0xa2, 0x3a, 0x2a, 0x49, 0x4f, 0x5b, 0x94, 0xc3, 0xd6, 0xf4, 0xfb, 0xd2, 0xae,
+    0xab, 0xcd, 0x1d, 0x02, 0x95, 0x9e, 0x43, 0xe8, 0xda, 0x7d, 0xc1, 0xd9, 0x33, 0xf4, 0x2b, 0xe6,
+    0x50, 0x1d, 0x15, 0xfe, 0xc3, 0x0f, 0xee, 0x58, 0xf5, 0x6f, 0x21, 0x63, 0x15, 0xa7, 0x1a, 0xc9,
+    0x58, 0xb9, 0x5c, 0x1c, 0xb4, 0xc6, 0x2f, 0x4c, 0x0b, 0x9f, 0x4e, 0x4f, 0x3d, 0x0e, 0xdf, 0x2b
+]
+
+# ============================================================================
+# 1. SUBSTITUTE BYTES - Sustitución de bytes usando la S-box
+# ============================================================================
+
+def substitute_bytes(matrix):
+    """Aplica SubstituteBytes a la matriz 4x4"""
+    rows = len(matrix)
+    cols = len(matrix[0])
+    result = [[0 for _ in range(cols)] for _ in range(rows)]
+    
+    for i in range(rows):
+        for j in range(cols):
+            value = matrix[i][j]
+            if 0 <= value < 256:
+                result[i][j] = SBOX[value]
+            else:
+                result[i][j] = value
+    
+    return result
+
+def inverse_substitute_bytes(matrix):
+    """Aplica Inverse SubstituteBytes a la matriz 4x4"""
+    rows = len(matrix)
+    cols = len(matrix[0])
+    result = [[0 for _ in range(cols)] for _ in range(rows)]
+    
+    for i in range(rows):
+        for j in range(cols):
+            value = matrix[i][j]
+            if 0 <= value < 256:
+                result[i][j] = INVERSE_SBOX[value]
+            else:
+                result[i][j] = value
+    
+    return result
+
+# ============================================================================
+# 2. SHIFT ROWS - Desplazamiento circular de filas
+# ============================================================================
+
+def shift_rows(state):
+    """
+    Aplica ShiftRows a la matriz de estado:
+    - Fila 0: sin cambios
+    - Fila 1: desplazamiento circular izquierdo de 1 posición
+    - Fila 2: desplazamiento circular izquierdo de 2 posiciones
+    - Fila 3: desplazamiento circular izquierdo de 3 posiciones
+    """
+    result = [[0 for _ in range(4)] for _ in range(4)]
+    
+    result[0] = state[0][:]
+    result[1] = state[1][1:] + state[1][:1]
+    result[2] = state[2][2:] + state[2][:2]
+    result[3] = state[3][3:] + state[3][:3]
+    
+    return result
+
+def inverse_shift_rows(state):
+    """
+    Aplica Inverse ShiftRows (desplazamiento a la derecha):
+    - Fila 0: sin cambios
+    - Fila 1: desplazamiento circular derecho de 1 posición
+    - Fila 2: desplazamiento circular derecho de 2 posiciones
+    - Fila 3: desplazamiento circular derecho de 3 posiciones
+    """
+    result = [[0 for _ in range(4)] for _ in range(4)]
+    
+    result[0] = state[0][:]
+    result[1] = state[1][-1:] + state[1][:-1]
+    result[2] = state[2][-2:] + state[2][:-2]
+    result[3] = state[3][-3:] + state[3][:-3]
+    
+    return result
+
+# ============================================================================
+# 3. MIX COLUMNS - Multiplicación en GF(2^8)
+# ============================================================================
+
+def gmul(a, b):
+    """Multiplicación en GF(2^8) (Galois Field)"""
+    if b == 1:
+        return a
+    tmp = (a << 1) & 0xff
+    if b == 2:
+        return tmp if a < 128 else tmp ^ 0x1b
+    if b == 3:
+        return gmul(a, 2) ^ a
+    return 0
+
+def mix_single_column(col):
+    """Aplica MixColumns a una columna individual"""
+    a, b, c, d = col[0], col[1], col[2], col[3]
+    
+    return [
+        gmul(a, 2) ^ gmul(b, 3) ^ gmul(c, 1) ^ gmul(d, 1),
+        gmul(a, 1) ^ gmul(b, 2) ^ gmul(c, 3) ^ gmul(d, 1),
+        gmul(a, 1) ^ gmul(b, 1) ^ gmul(c, 2) ^ gmul(d, 3),
+        gmul(a, 3) ^ gmul(b, 1) ^ gmul(c, 1) ^ gmul(d, 2)
+    ]
+
+def mix_columns(state):
+    """Aplica MixColumns a todas las columnas"""
+    result = [[0 for _ in range(4)] for _ in range(4)]
+    
+    for col in range(4):
+        column = [state[row][col] for row in range(4)]
+        mixed = mix_single_column(column)
+        for row in range(4):
+            result[row][col] = mixed[row]
+    
+    return result
+
+def inverse_mix_columns(state):
+    """Aplica Inverse MixColumns"""
+    result = [[0 for _ in range(4)] for _ in range(4)]
+    
+    for col in range(4):
+        a, b, c, d = state[0][col], state[1][col], state[2][col], state[3][col]
+        
+        result[0][col] = gmul(a, 14) ^ gmul(b, 11) ^ gmul(c, 13) ^ gmul(d, 9)
+        result[1][col] = gmul(a, 9) ^ gmul(b, 14) ^ gmul(c, 11) ^ gmul(d, 13)
+        result[2][col] = gmul(a, 13) ^ gmul(b, 9) ^ gmul(c, 14) ^ gmul(d, 11)
+        result[3][col] = gmul(a, 11) ^ gmul(b, 13) ^ gmul(c, 9) ^ gmul(d, 14)
+    
+    return result
+
+# ============================================================================
+# 4. ADD ROUND KEY - XOR con la clave redonda
+# ============================================================================
+
+def add_round_key(state, round_key):
+    """Aplica AddRoundKey (XOR entre estado y clave redonda)"""
+    result = [[0 for _ in range(4)] for _ in range(4)]
+    
+    for i in range(4):
+        for j in range(4):
+            result[i][j] = state[i][j] ^ round_key[i][j]
+    
+    return result
+
+# ============================================================================
+# KEY EXPANSION - Expansión de claves
+# ============================================================================
+
+def key_expansion(key):
+    """
+    Expande la clave de 16 bytes a 44 palabras (176 bytes) para AES-128
+    Genera 11 claves redondas (una inicial + 10 para las rondas)
+    """
+    rcon = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36]
+    
+    w = []
+    
+    # Primeras 4 palabras son la clave original
+    for i in range(4):
+        w.append([key[4*i], key[4*i+1], key[4*i+2], key[4*i+3]])
+    
+    # Generar las 40 palabras restantes
+    for i in range(4, 44):
+        temp = w[i-1][:]
+        
+        if i % 4 == 0:
+            # RotWord
+            temp = temp[1:] + temp[:1]
+            # SubWord
+            temp = [SBOX[b] for b in temp]
+            # XOR con rcon
+            temp[0] ^= rcon[(i // 4) - 1]
+        
+        w.append([w[i-4][j] ^ temp[j] for j in range(4)])
+    
+    return w
+
+def words_to_state_key(words_indices):
+    """Convierte 4 palabras en una matriz de estado 4x4"""
+    state = [[0 for _ in range(4)] for _ in range(4)]
+    for col in range(4):
+        for row in range(4):
+            state[row][col] = words_indices[col][row]
+    return state
+
+# ============================================================================
+# UTILIDADES DE IMPRESIÓN
+# ============================================================================
+
+def print_matrix(matrix, title=""):
+    """Imprime una matriz en formato hexadecimal"""
+    if title:
+        print(f"\n{title}")
+        print("-" * 40)
+    for row in matrix:
+        print(" ".join(f"{val:02x}" for val in row))
+
+def print_state(state, title=""):
+    """Imprime el estado en formato de columnas"""
+    if title:
+        print(f"\n{title}")
+        print("-" * 40)
+    for row in state:
+        print(" ".join(f"{val:02x}" for val in row))
+
+# ============================================================================
+# CIFRADO Y DESCIFRADO AES-128
+# ============================================================================
+
+def aes_encrypt(plaintext, key):
+    """
+    Cifra el texto plano usando AES-128
+    plaintext: lista de 16 bytes
+    key: lista de 16 bytes
+    """
+    
+    # Convertir a matriz 4x4 (almacenamiento por columnas)
+    state = [[plaintext[row + col*4] for col in range(4)] for row in range(4)]
+    
+    # Expansión de clave
+    w = key_expansion(key)
+    
+    print("\n" + "="*60)
+    print("ENCRIPTACIÓN AES-128")
+    print("="*60)
+    print_state(state, "Plaintext inicial:")
+    
+    # AddRoundKey inicial
+    round_key = words_to_state_key(w[0:4])
+    state = add_round_key(state, round_key)
+    print_state(state, "Después de AddRoundKey inicial:")
+    
+    # Rondas principales (1-9)
+    for round_num in range(1, 10):
+        print(f"\n--- RONDA {round_num} ---")
+        
+        # SubstituteBytes
+        state = substitute_bytes(state)
+        print_state(state, "Después de SubstituteBytes:")
+        
+        # ShiftRows
+        state = shift_rows(state)
+        print_state(state, "Después de ShiftRows:")
+        
+        # MixColumns
+        state = mix_columns(state)
+        print_state(state, "Después de MixColumns:")
+        
+        # AddRoundKey
+        round_key = words_to_state_key(w[round_num*4:(round_num+1)*4])
+        state = add_round_key(state, round_key)
+        print_state(state, f"Después de AddRoundKey (ronda {round_num}):")
+    
+    # Ronda final (10)
+    print("\n--- RONDA FINAL (10) ---")
+    state = substitute_bytes(state)
+    print_state(state, "Después de SubstituteBytes:")
+    
+    state = shift_rows(state)
+    print_state(state, "Después de ShiftRows:")
+    
+    round_key = words_to_state_key(w[40:44])
+    state = add_round_key(state, round_key)
+    print_state(state, "Ciphertext final (después de AddRoundKey):")
+    
+    # Convertir matriz 4x4 a lista de 16 bytes
+    ciphertext = []
+    for row in range(4):
+        for col in range(4):
+            ciphertext.append(state[row][col])
+    
+    return ciphertext
+
+def aes_decrypt(ciphertext, key):
+    """
+    Descifra el texto cifrado usando AES-128
+    ciphertext: lista de 16 bytes
+    key: lista de 16 bytes
+    """
+    
+    # Convertir a matriz 4x4
+    state = [[ciphertext[row + col*4] for col in range(4)] for row in range(4)]
+    
+    # Expansión de clave
+    w = key_expansion(key)
+    
+    print("\n" + "="*60)
+    print("DESENCRIPTACIÓN AES-128")
+    print("="*60)
+    print_state(state, "Ciphertext inicial:")
+    
+    # AddRoundKey inicial
+    round_key = words_to_state_key(w[40:44])
+    state = add_round_key(state, round_key)
+    print_state(state, "Después de AddRoundKey inicial:")
+    
+    # Rondas inversas (9-1)
+    for round_num in range(9, 0, -1):
+        print(f"\n--- RONDA {round_num} (Inversa) ---")
+        
+        # Inverse ShiftRows
+        state = inverse_shift_rows(state)
+        print_state(state, "Después de Inverse ShiftRows:")
+        
+        # Inverse SubstituteBytes
+        state = inverse_substitute_bytes(state)
+        print_state(state, "Después de Inverse SubstituteBytes:")
+        
+        # AddRoundKey
+        round_key = words_to_state_key(w[round_num*4:(round_num+1)*4])
+        state = add_round_key(state, round_key)
+        print_state(state, f"Después de AddRoundKey (ronda {round_num}):")
+        
+        # Inverse MixColumns
+        state = inverse_mix_columns(state)
+        print_state(state, "Después de Inverse MixColumns:")
+    
+    # Ronda final
+    print("\n--- RONDA FINAL (Inversa) ---")
+    state = inverse_shift_rows(state)
+    print_state(state, "Después de Inverse ShiftRows:")
+    
+    state = inverse_substitute_bytes(state)
+    print_state(state, "Después de Inverse SubstituteBytes:")
+    
+    round_key = words_to_state_key(w[0:4])
+    state = add_round_key(state, round_key)
+    print_state(state, "Plaintext final (después de AddRoundKey):")
+    
+    # Convertir matriz 4x4 a lista de 16 bytes
+    plaintext = []
+    for row in range(4):
+        for col in range(4):
+            plaintext.append(state[row][col])
+    
+    return plaintext
+
+# ============================================================================
+# EJEMPLO DE USO
+# ============================================================================
+
+def main():
+    print("\n")
+    print("="*60)
+    print("AES-128 COMPLETO - ENCRIPTACIÓN Y DESENCRIPTACIÓN")
+    print("="*60)
+    
+    # Plaintext de ejemplo: "Hello World 1234" (16 caracteres)
+    plaintext = [ord(c) for c in "Hello World 1234"]
+    
+    # Clave de ejemplo: "MySecret123456!!" (16 caracteres)
+    key = [ord(c) for c in "MySecret123456!!"]
+    
+    print("\nDatos de entrada:")
+    print(f"Plaintext: {plaintext}")
+    print(f"Plaintext (texto): {''.join(chr(b) for b in plaintext)}")
+    print(f"Key: {key}")
+    print(f"Key (texto): {''.join(chr(b) for b in key)}")
+    
+    # Encriptar
+    ciphertext = aes_encrypt(plaintext, key)
+    
+    print("\n" + "="*60)
+    print("CIPHERTEXT FINAL:")
+    print("="*60)
+    print(f"Bytes: {ciphertext}")
+    print(f"Hexadecimal: {' '.join(f'{b:02x}' for b in ciphertext)}")
+    
+    # Desencriptar
+    decrypted = aes_decrypt(ciphertext, key)
+    
+    print("\n" + "="*60)
+    print("PLAINTEXT RECUPERADO:")
+    print("="*60)
+    print(f"Bytes: {decrypted}")
+    print(f"Texto: {''.join(chr(b) for b in decrypted)}")
+    
+    # Verificar que coincide con el original
+    if decrypted == plaintext:
+        print("\n ÉXITO: El texto descifrado coincide con el original!")
+    else:
+        print("\n ERROR: El texto descifrado NO coincide con el original!")
+
+if __name__ == "__main__":
+    main()
